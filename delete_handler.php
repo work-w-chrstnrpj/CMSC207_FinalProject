@@ -1,10 +1,7 @@
 <?php
 session_start();
 require 'db.php';
-<<<<<<< HEAD
 require 'destination_photo_helper.php';
-=======
->>>>>>> eea1a3c55efd4bc65a2ae060eb5f694b773f040d
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
@@ -15,11 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $destId = (int) ($_POST['dest_id'] ?? 0);
 
     if ($destId > 0) {
-<<<<<<< HEAD
         destination_ensure_photo_column($conn);
 
-=======
->>>>>>> eea1a3c55efd4bc65a2ae060eb5f694b773f040d
         // Delete all trips and itinerary items for this destination
         $getTripsStmt = $conn->prepare("SELECT trip_id FROM itinerary_items WHERE dest_id = ?");
         $getTripsStmt->bind_param('i', $destId);
@@ -56,7 +50,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
         }
 
-<<<<<<< HEAD
         $destinationStmt = $conn->prepare("SELECT photo_path FROM destinations WHERE {$destIdColumn} = ? LIMIT 1");
         $destinationStmt->bind_param('i', $destId);
         $destinationStmt->execute();
@@ -72,12 +65,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         if ($deleteSuccessful && $destination) {
             destination_delete_photo_file($destination['photo_path'] ?? '');
         }
-=======
-        $deleteDestStmt = $conn->prepare("DELETE FROM destinations WHERE {$destIdColumn} = ?");
-        $deleteDestStmt->bind_param('i', $destId);
-        $deleteDestStmt->execute();
-        $deleteDestStmt->close();
->>>>>>> eea1a3c55efd4bc65a2ae060eb5f694b773f040d
     }
 }
 

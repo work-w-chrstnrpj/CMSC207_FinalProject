@@ -161,6 +161,13 @@ function travel_format_trip_date(?string $tripDate, ?string $createdAt = null): 
 function travel_get_transport_modes(): array
 {
     return [
+        'walking' => [
+            'label' => 'Walking',
+            'factor' => 0.00,
+            'eco' => true,
+            'badge' => 'Zero emissions, great for short distances',
+            'tip' => 'Perfect for exploring local areas and short trips.',
+        ],
         'bike' => [
             'label' => 'Bike',
             'factor' => 0.00,
@@ -380,9 +387,9 @@ function travel_build_next_order_help(mysqli $conn, int $destId, ?string $tripDa
 
 function travel_calculate_eco_rating(mysqli $conn, int $destId): float
 {
-    $stmt = $conn->prepare('SELECT COUNT(*) as segment_count, AVG(carbon_est) as avg_carbon FROM itinerary_items WHERE dest_id = ?');
+    $stmt = $conn->prepare('SELECT COUNT(*) as segment_count, AVG(carbon_est) as avg_carbon, SUM(is_eco_friendly) as eco_friendly_count FROM itinerary_items WHERE dest_id = ?');
     if (!$stmt) {
-        return 3.0;
+        return 0.0;
     }
     
     $stmt->bind_param('i', $destId);
@@ -391,12 +398,21 @@ function travel_calculate_eco_rating(mysqli $conn, int $destId): float
     $row = $result ? $result->fetch_assoc() : null;
     $stmt->close();
 
-    if (!$row || (int) $row['segment_count'] === 0) {
-        return 3.0;
+    $segmentCount = (int) ($row['segment_count'] ?? 0);
+
+    if (!$row || $segmentCount === 0) {
+        return 0.0;
     }
 
     $avgCarbon = (float) $row['avg_carbon'];
-    $rating = 5.0 - ($avgCarbon / 25.0);
+    $ecoFriendlyCount = (int) $row['eco_friendly_count'];
+    $ecoFriendlyRatio = $ecoFriendlyCount / $segmentCount;
+
+    // Base rating starts at 4.0 if carbon is low, penalize for higher average carbon
+    $rating = 5.0 - ($avgCarbon / 15.0);
+    
+    // Boost rating based on the ratio of eco-friendly transport modes used
+    $rating += ($ecoFriendlyRatio * 1.5);
     
     return max(1.0, min(5.0, round($rating, 1)));
 }
@@ -408,7 +424,7 @@ function travel_calculate_segment_result(array $destination, float $distanceKm, 
     $recommendedMode = $recommended['key'];
     $selectedMode = $transportMode === 'auto' ? $recommendedMode : $transportMode;
     $modeConfig = $transportModes[$selectedMode];
-    $destinationRating = isset($destination['eco_rating']) ? (float) $destination['eco_rating'] : 3.0;
+    $destinationRating = isset($destination['eco_rating']) ? (float) $destination['eco_rating'] : 0.0;
     $carbonEstimate = round($distanceKm * $modeConfig['factor'], 2);
     $destinationScore = $destinationRating * 10;
     $transportScore = travel_clamp(60 - ($carbonEstimate * 5), 0, 60);
